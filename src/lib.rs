@@ -1,4 +1,3 @@
-use std::fs;
 use std::fmt;
 
 use image::GrayImage;
@@ -161,9 +160,37 @@ impl IdxArray<u8, 3> {
     }
 }
 
-#[test]
-fn test_read_idx3_ubyte() {
-    let input = fs::read("data/train-images.idx3-ubyte").expect("idx file");
-    let input = IdxArray::<u8, 3>::new(&input).expect("parse index");
-    let input = input.as_gray_image_sequence();
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use super::IdxArray;
+
+    #[test]
+    fn test_t10k_labels() {
+        let input = fs::read("data/t10k-labels.idx1-ubyte").expect("idx file");
+        let input = IdxArray::<u8, 1>::new(&input).expect("parse index");
+        let _ = input.into_sequence();
+    }
+
+    #[test]
+    fn test_train_labels() {
+        let input = fs::read("data/train-labels.idx1-ubyte").expect("idx file");
+        let input = IdxArray::<u8, 1>::new(&input).expect("parse index");
+        let _ = input.into_sequence();
+    }
+
+    #[test]
+    fn test_train_idx3_ubyte() {
+        let input = fs::read("data/train-images.idx3-ubyte").expect("idx file");
+        let input = IdxArray::<u8, 3>::new(&input).expect("parse index");
+        let _ = input.as_gray_image_sequence();
+    }
+
+    #[test]
+    fn test_t10k_idx3_ubyte() {
+        let input = fs::read("data/t10k-images.idx3-ubyte").expect("idx file");
+        let input = IdxArray::<u8, 3>::new(&input).expect("parse index");
+        let _ = input.as_gray_image_sequence();
+    }
 }
+
