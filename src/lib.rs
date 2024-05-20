@@ -121,10 +121,18 @@ fn parse<T: DataFormat, const N: usize>(x: &[u8]) -> IResult<'_, ([u32; N], Vec<
     Ok((x, (dims, data)))
 }
 
+/// The array as read from an `IDX` file.
 #[derive(Debug, Clone)]
 pub struct IdxArray<T, const N: usize> {
     dims: [u32; N],
     data: Vec<T>,
+}
+
+impl<T, const N: usize> IdxArray<T, N> {
+    /// Returns the raw contents of the `IdxArray`.
+    pub fn dims_data(self) -> ([u32; N], Vec<T>) {
+        (self.dims, self.data)
+    }
 }
 
 impl<T: DataFormat, const N: usize> IdxArray<T, N> {
@@ -137,11 +145,6 @@ impl<T: DataFormat, const N: usize> IdxArray<T, N> {
             Err(_) => Err(Error),
         }
     }
-
-    /// Returns the raw contents of the `IdxArray`.
-    pub fn dims_data(self) -> ([u32; N], Vec<T>) {
-        (self.dims, self.data)
-    }
 }
 
 impl<T> IdxArray<T, 1> {
@@ -152,7 +155,7 @@ impl<T> IdxArray<T, 1> {
 }
 
 impl IdxArray<u8, 3> {
-    /// Returns the sequence of greyscale images, assuming that self has a sequence
+    /// Returns the sequence of greyscale images, assuming that `self` is a sequence
     /// of images over its first axis.
     pub fn as_gray_image_sequence(&self) -> Vec<GrayImage> {
         let [_, height, width] = self.dims;
