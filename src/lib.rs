@@ -2,20 +2,20 @@ use std::fmt;
 
 use image::GrayImage;
 
-use nom::error::Error;
-use nom::combinator::map_res;
-use nom::combinator::eof;
 use nom::bytes::complete::tag;
-use nom::sequence::tuple;
+use nom::combinator::eof;
+use nom::combinator::map_res;
+use nom::error::Error;
 use nom::multi::count;
+use nom::sequence::tuple;
 
-use nom::number::complete::be_u8;
-use nom::number::complete::be_i8;
-use nom::number::complete::be_i16;
-use nom::number::complete::be_i32;
 use nom::number::complete::be_f32;
 use nom::number::complete::be_f64;
+use nom::number::complete::be_i16;
+use nom::number::complete::be_i32;
+use nom::number::complete::be_i8;
 use nom::number::complete::be_u32;
+use nom::number::complete::be_u8;
 
 type IResult<'a, T, E = nom::Err<Error<&'a [u8]>>> = Result<(&'a [u8], T), E>;
 
@@ -95,7 +95,10 @@ fn check_num_dims<const N: usize>(num_dims: u8) -> Result<usize, ()> {
 
 fn check_dims_dimensions<const N: usize>(dims: Vec<u32>) -> Result<([u32; N], usize), ()> {
     let dims: [u32; N] = dims.try_into().map_err(|_| ())?;
-    let elements = dims.iter().try_fold(1usize, |a, &b| a.checked_mul(usize::try_from(b).ok()?)).ok_or(())?;
+    let elements = dims
+        .iter()
+        .try_fold(1usize, |a, &b| a.checked_mul(usize::try_from(b).ok()?))
+        .ok_or(())?;
     Ok((dims, elements))
 }
 
@@ -105,10 +108,7 @@ fn parse<T: DataFormat, const N: usize>(x: &[u8]) -> IResult<'_, ([u32; N], Vec<
         map_res(be_u8, check_magic_byte::<T>),
         map_res(be_u8, check_num_dims::<N>),
     ))(x)?;
-    let (x, (dims, elements)) = map_res(
-        count(be_u32, num_dims),
-        check_dims_dimensions,
-    )(x)?;
+    let (x, (dims, elements)) = map_res(count(be_u32, num_dims), check_dims_dimensions)(x)?;
     let (x, data) = count(T::combinator(), elements)(x)?;
     let (x, _) = eof(x)?;
     Ok((x, (dims, data)))
@@ -140,7 +140,6 @@ impl<T: DataFormat, const N: usize> IdxArray<T, N> {
     pub fn into_dims_data(self) -> ([u32; N], Vec<T>) {
         (self.dims, self.data)
     }
-
 }
 
 impl<T> IdxArray<T, 1> {
@@ -152,18 +151,17 @@ impl<T> IdxArray<T, 1> {
 impl IdxArray<u8, 3> {
     pub fn as_gray_image_sequence(&self) -> Vec<GrayImage> {
         let [_, height, width] = self.dims;
-        self.data.chunks_exact((width * height) as usize)
-            .map(|buf| {
-                GrayImage::from_raw(width, height, buf.to_vec()).unwrap()
-            })
+        self.data
+            .chunks_exact((width * height) as usize)
+            .map(|buf| GrayImage::from_raw(width, height, buf.to_vec()).unwrap())
             .collect()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
     use super::IdxArray;
+    use std::fs;
 
     #[test]
     fn test_t10k_labels() {
@@ -193,4 +191,3 @@ mod tests {
         let _ = input.as_gray_image_sequence();
     }
 }
-
