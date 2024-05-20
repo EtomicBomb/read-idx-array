@@ -31,7 +31,6 @@ mod private {
     pub trait Sealed {}
 }
 
-#[doc(hidden)]
 pub trait DataFormat: private::Sealed {
     const MAGIC_BYTE: u8;
     fn combinator() -> impl for<'a> Fn(&'a [u8]) -> IResult<'a, Self>;
@@ -124,7 +123,7 @@ fn parse<T: DataFormat, const N: usize>(x: &[u8]) -> IResult<'_, ([u32; N], Vec<
 }
 
 /// The array as read from an `IDX` file.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IdxArray<T, const N: usize> {
     dims: [u32; N],
     data: Vec<T>,
@@ -138,9 +137,9 @@ impl<T, const N: usize> IdxArray<T, N> {
 }
 
 impl<T: DataFormat, const N: usize> IdxArray<T, N> {
-    /// Parses `input`, which is the raw contents of an idx file.
+    /// Parses `input`, which is the raw contents of an `IDX` file.
     ///
-    /// Assumes you know the type of the image before it's parsed (checks, but does not infer).
+    /// Assumes you know the type of the array before it's parsed (checks, but does not infer).
     pub fn parse(input: &[u8]) -> Result<Self, Error> {
         match parse(input) {
             Ok((_, (dims, data))) => Ok(IdxArray { dims, data }),
