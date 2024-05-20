@@ -1,13 +1,10 @@
-use std::fmt;
+//! Reads `IDX` files as described in <a href="http://yann.lecun.com/exdb/mnist/">http://yann.lecun.com/exdb/mnist/</a>
 
 use image::GrayImage;
-
 use nom::bytes::complete::tag;
 use nom::combinator::eof;
 use nom::combinator::map_res;
 use nom::multi::count;
-use nom::sequence::tuple;
-
 use nom::number::complete::be_f32;
 use nom::number::complete::be_f64;
 use nom::number::complete::be_i16;
@@ -15,9 +12,17 @@ use nom::number::complete::be_i32;
 use nom::number::complete::be_i8;
 use nom::number::complete::be_u32;
 use nom::number::complete::be_u8;
+use nom::sequence::tuple;
+use std::fmt;
 
 #[derive(Debug, Clone)]
 pub struct Error;
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "parse error")
+    }
+}
 
 type IResult<'a, T> = Result<(&'a [u8], T), nom::Err<nom::error::Error<&'a [u8]>>>;
 
@@ -122,32 +127,33 @@ pub struct IdxArray<T, const N: usize> {
     data: Vec<T>,
 }
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "conversion error")
-    }
-}
-
 impl<T: DataFormat, const N: usize> IdxArray<T, N> {
-    pub fn new(input: &[u8]) -> Result<Self, Error> {
+    /// Parses `input`, which is the raw contents of an idx file.
+    ///
+    /// Assumes you know the type of the image before it's parsed (checks, but does not infer).
+    pub fn parse(input: &[u8]) -> Result<Self, Error> {
         match parse(input) {
             Ok((_, (dims, data))) => Ok(IdxArray { dims, data }),
             Err(_) => Err(Error),
         }
     }
 
-    pub fn into_dims_data(self) -> ([u32; N], Vec<T>) {
+    /// Returns the raw contents of the `IdxArray`.
+    pub fn dims_data(self) -> ([u32; N], Vec<T>) {
         (self.dims, self.data)
     }
 }
 
 impl<T> IdxArray<T, 1> {
+    /// Returns the contents of this array as a linear sequence.
     pub fn into_sequence(self) -> Vec<T> {
         self.data
     }
 }
 
 impl IdxArray<u8, 3> {
+    /// Returns the sequence of greyscale images, assuming that self has a sequence
+    /// of images over its first axis.
     pub fn as_gray_image_sequence(&self) -> Vec<GrayImage> {
         let [_, height, width] = self.dims;
         self.data
@@ -165,7 +171,7 @@ mod tests {
     #[test]
     fn test_t10k_labels() {
         let x = fs::read("data/t10k-labels.idx1-ubyte").expect("idx file");
-        let x = IdxArray::<u8, 1>::new(&x).expect("parse index");
+        let x = IdxArray::<u8, 1>::parse(&x).expect("parse index");
         let x = x.into_sequence();
         assert_eq!(x.len(), 10_000);
         assert!(x.iter().all(|e| (0..=9).contains(e)));
@@ -175,7 +181,7 @@ mod tests {
     #[test]
     fn test_train_labels() {
         let x = fs::read("data/train-labels.idx1-ubyte").expect("idx file");
-        let x = IdxArray::<u8, 1>::new(&x).expect("parse index");
+        let x = IdxArray::<u8, 1>::parse(&x).expect("parse index");
         let x = x.into_sequence();
         assert_eq!(x.len(), 60_000);
         assert!(x.iter().all(|e| (0..=9).contains(e)));
@@ -185,7 +191,7 @@ mod tests {
     #[test]
     fn test_t10k_idx3_ubyte() {
         let x = fs::read("data/t10k-images.idx3-ubyte").expect("idx file");
-        let x = IdxArray::<u8, 3>::new(&x).expect("parse index");
+        let x = IdxArray::<u8, 3>::parse(&x).expect("parse index");
         let x = x.as_gray_image_sequence();
         assert_eq!(x.len(), 10_000);
     }
@@ -193,7 +199,7 @@ mod tests {
     #[test]
     fn test_train_idx3_ubyte() {
         let x = fs::read("data/train-images.idx3-ubyte").expect("idx file");
-        let x = IdxArray::<u8, 3>::new(&x).expect("parse index");
+        let x = IdxArray::<u8, 3>::parse(&x).expect("parse index");
         let x = x.as_gray_image_sequence();
         assert_eq!(x.len(), 60_000);
     }
