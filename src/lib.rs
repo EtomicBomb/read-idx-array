@@ -5,7 +5,6 @@ use image::GrayImage;
 use nom::bytes::complete::tag;
 use nom::combinator::eof;
 use nom::combinator::map_res;
-use nom::error::Error;
 use nom::multi::count;
 use nom::sequence::tuple;
 
@@ -17,7 +16,10 @@ use nom::number::complete::be_i8;
 use nom::number::complete::be_u32;
 use nom::number::complete::be_u8;
 
-type IResult<'a, T, E = nom::Err<Error<&'a [u8]>>> = Result<(&'a [u8], T), E>;
+#[derive(Debug, Clone)]
+pub struct Error;
+
+type IResult<'a, T> = Result<(&'a [u8], T), nom::Err<nom::error::Error<&'a [u8]>>>;
 
 mod private {
     pub trait Sealed {}
@@ -76,29 +78,29 @@ impl DataFormat for f64 {
     }
 }
 
-fn check_magic_byte<T: DataFormat>(b: u8) -> Result<(), ()> {
+fn check_magic_byte<T: DataFormat>(b: u8) -> Result<(), Error> {
     if b == T::MAGIC_BYTE {
         Ok(())
     } else {
-        Err(())
+        Err(Error)
     }
 }
 
-fn check_num_dims<const N: usize>(num_dims: u8) -> Result<usize, ()> {
+fn check_num_dims<const N: usize>(num_dims: u8) -> Result<usize, Error> {
     let num_dims = usize::from(num_dims);
     if num_dims == N {
         Ok(num_dims)
     } else {
-        Err(())
+        Err(Error)
     }
 }
 
-fn check_dims_dimensions<const N: usize>(dims: Vec<u32>) -> Result<([u32; N], usize), ()> {
-    let dims: [u32; N] = dims.try_into().map_err(|_| ())?;
+fn check_dims_dimensions<const N: usize>(dims: Vec<u32>) -> Result<([u32; N], usize), Error> {
+    let dims: [u32; N] = dims.try_into().map_err(|_| Error)?;
     let elements = dims
         .iter()
         .try_fold(1usize, |a, &b| a.checked_mul(usize::try_from(b).ok()?))
-        .ok_or(())?;
+        .ok_or(Error)?;
     Ok((dims, elements))
 }
 
@@ -120,20 +122,17 @@ pub struct IdxArray<T, const N: usize> {
     data: Vec<T>,
 }
 
-#[derive(Debug, Clone)]
-pub struct ConversionError;
-
-impl fmt::Display for ConversionError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "conversion error")
     }
 }
 
 impl<T: DataFormat, const N: usize> IdxArray<T, N> {
-    pub fn new(input: &[u8]) -> Result<Self, ConversionError> {
+    pub fn new(input: &[u8]) -> Result<Self, Error> {
         match parse(input) {
             Ok((_, (dims, data))) => Ok(IdxArray { dims, data }),
-            Err(_) => Err(ConversionError),
+            Err(_) => Err(Error),
         }
     }
 
@@ -165,29 +164,37 @@ mod tests {
 
     #[test]
     fn test_t10k_labels() {
-        let input = fs::read("data/t10k-labels.idx1-ubyte").expect("idx file");
-        let input = IdxArray::<u8, 1>::new(&input).expect("parse index");
-        let _ = input.into_sequence();
+        let x = fs::read("data/t10k-labels.idx1-ubyte").expect("idx file");
+        let x = IdxArray::<u8, 1>::new(&x).expect("parse index");
+        let x = x.into_sequence();
+        assert_eq!(x.len(), 10_000);
+        assert!(x.iter().all(|e| (0..=9).contains(e)));
+        assert!((0u8..=9).all(|e| x.contains(&e)));
     }
 
     #[test]
     fn test_train_labels() {
-        let input = fs::read("data/train-labels.idx1-ubyte").expect("idx file");
-        let input = IdxArray::<u8, 1>::new(&input).expect("parse index");
-        let _ = input.into_sequence();
-    }
-
-    #[test]
-    fn test_train_idx3_ubyte() {
-        let input = fs::read("data/train-images.idx3-ubyte").expect("idx file");
-        let input = IdxArray::<u8, 3>::new(&input).expect("parse index");
-        let _ = input.as_gray_image_sequence();
+        let x = fs::read("data/train-labels.idx1-ubyte").expect("idx file");
+        let x = IdxArray::<u8, 1>::new(&x).expect("parse index");
+        let x = x.into_sequence();
+        assert_eq!(x.len(), 60_000);
+        assert!(x.iter().all(|e| (0..=9).contains(e)));
+        assert!((0u8..=9).all(|e| x.contains(&e)));
     }
 
     #[test]
     fn test_t10k_idx3_ubyte() {
-        let input = fs::read("data/t10k-images.idx3-ubyte").expect("idx file");
-        let input = IdxArray::<u8, 3>::new(&input).expect("parse index");
-        let _ = input.as_gray_image_sequence();
+        let x = fs::read("data/t10k-images.idx3-ubyte").expect("idx file");
+        let x = IdxArray::<u8, 3>::new(&x).expect("parse index");
+        let x = x.as_gray_image_sequence();
+        assert_eq!(x.len(), 10_000);
+    }
+
+    #[test]
+    fn test_train_idx3_ubyte() {
+        let x = fs::read("data/train-images.idx3-ubyte").expect("idx file");
+        let x = IdxArray::<u8, 3>::new(&x).expect("parse index");
+        let x = x.as_gray_image_sequence();
+        assert_eq!(x.len(), 60_000);
     }
 }
