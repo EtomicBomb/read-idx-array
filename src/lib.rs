@@ -99,7 +99,7 @@ fn check_dims_dimensions<const N: usize>(dims: Vec<u32>) -> Result<([u32; N], us
     Ok((dims, elements))
 }
 
-fn parse<'a, T: DataFormat, const N: usize>(x: &'a [u8]) -> IResult<'a, ([u32; N], Vec<T>)> {
+fn parse<T: DataFormat, const N: usize>(x: &[u8]) -> IResult<'_, ([u32; N], Vec<T>)> {
     let (x, (_, (), num_dims)) = tuple((
         tag([0u8; 2]),
         map_res(be_u8, check_magic_byte::<T>),
