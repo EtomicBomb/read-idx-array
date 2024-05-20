@@ -1,4 +1,4 @@
-//! Reads `IDX` files as described in <a href="http://yann.lecun.com/exdb/mnist/">http://yann.lecun.com/exdb/mnist/</a>
+//! Reads `IDX` files as described in <http://yann.lecun.com/exdb/mnist/>
 
 use image::GrayImage;
 use nom::bytes::complete::tag;
@@ -15,6 +15,7 @@ use nom::number::complete::be_u8;
 use nom::sequence::tuple;
 use std::fmt;
 
+/// Error from parsing the `IDX` file.
 #[derive(Debug, Clone)]
 pub struct Error;
 
@@ -30,6 +31,7 @@ mod private {
     pub trait Sealed {}
 }
 
+#[doc(hidden)]
 pub trait DataFormat: private::Sealed {
     const MAGIC_BYTE: u8;
     fn combinator() -> impl for<'a> Fn(&'a [u8]) -> IResult<'a, Self>;
