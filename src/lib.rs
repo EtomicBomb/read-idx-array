@@ -35,55 +35,43 @@ mod private {
 /// itself.
 pub trait DataFormat: private::Sealed {
     const MAGIC_BYTE: u8;
-    fn read_element() -> for<'a> fn(&'a [u8]) -> IResult<'a, Self>;
+    const READ_ELEMENT: for<'a> fn(&'a [u8]) -> IResult<'a, Self>;
 }
 
 impl private::Sealed for u8 {}
 impl DataFormat for u8 {
     const MAGIC_BYTE: u8 = 0x08;
-    fn read_element() -> for<'a> fn(&'a [u8]) -> IResult<'a, Self> {
-        |x| be_u8(x)
-    }
+    const READ_ELEMENT: for<'a> fn(&'a [u8]) -> IResult<'a, Self> = |x| be_u8(x);
 }
 
 impl private::Sealed for i8 {}
 impl DataFormat for i8 {
     const MAGIC_BYTE: u8 = 0x09;
-    fn read_element() -> for<'a> fn(&'a [u8]) -> IResult<'a, Self> {
-        |x| be_i8(x)
-    }
+    const READ_ELEMENT: for<'a> fn(&'a [u8]) -> IResult<'a, Self> = |x| be_i8(x);
 }
 
 impl private::Sealed for i16 {}
 impl DataFormat for i16 {
     const MAGIC_BYTE: u8 = 0x0B;
-    fn read_element() -> for<'a> fn(&'a [u8]) -> IResult<'a, Self> {
-        |x| be_i16(x)
-    }
+    const READ_ELEMENT: for<'a> fn(&'a [u8]) -> IResult<'a, Self> = |x| be_i16(x);
 }
 
 impl private::Sealed for i32 {}
 impl DataFormat for i32 {
     const MAGIC_BYTE: u8 = 0x0C;
-    fn read_element() -> for<'a> fn(&'a [u8]) -> IResult<'a, Self> {
-        |x| be_i32(x)
-    }
+    const READ_ELEMENT: for<'a> fn(&'a [u8]) -> IResult<'a, Self> = |x| be_i32(x);
 }
 
 impl private::Sealed for f32 {}
 impl DataFormat for f32 {
     const MAGIC_BYTE: u8 = 0x0D;
-    fn read_element() -> for<'a> fn(&'a [u8]) -> IResult<'a, Self> {
-        |x| be_f32(x)
-    }
+    const READ_ELEMENT: for<'a> fn(&'a [u8]) -> IResult<'a, Self> = |x| be_f32(x);
 }
 
 impl private::Sealed for f64 {}
 impl DataFormat for f64 {
     const MAGIC_BYTE: u8 = 0x0E;
-    fn read_element() -> for<'a> fn(&'a [u8]) -> IResult<'a, Self> {
-        |x| be_f64(x)
-    }
+    const READ_ELEMENT: for<'a> fn(&'a [u8]) -> IResult<'a, Self> = |x| be_f64(x);
 }
 
 fn check_magic_byte<T: DataFormat>(b: u8) -> Result<(), Error> {
@@ -119,7 +107,7 @@ fn parse<T: DataFormat, const N: usize>(x: &[u8]) -> IResult<'_, ([u32; N], Vec<
         map_res(be_u8, check_num_dims::<N>),
     ))(x)?;
     let (x, (dims, elements)) = map_res(count(be_u32, num_dims), check_dims_dimensions)(x)?;
-    let (x, data) = count(T::read_element(), elements)(x)?;
+    let (x, data) = count(T::READ_ELEMENT, elements)(x)?;
     let (x, _) = eof(x)?;
     Ok((x, (dims, data)))
 }
