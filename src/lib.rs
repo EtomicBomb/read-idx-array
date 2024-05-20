@@ -12,7 +12,6 @@ use nom::number::complete::be_i32;
 use nom::number::complete::be_i8;
 use nom::number::complete::be_u32;
 use nom::number::complete::be_u8;
-use nom::sequence::tuple;
 use std::fmt;
 
 /// Error from parsing the `IDX` file.
@@ -21,7 +20,7 @@ pub struct Error;
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "parse error")
+        write!(f, "IDX parse error")
     }
 }
 
@@ -101,11 +100,9 @@ fn check_dims_dimensions<const N: usize>(dims: Vec<u32>) -> Result<([u32; N], us
 }
 
 fn parse<T: DataFormat, const N: usize>(x: &[u8]) -> IResult<'_, ([u32; N], Vec<T>)> {
-    let (x, (_, (), num_dims)) = tuple((
-        tag([0u8; 2]),
-        map_res(be_u8, check_magic_byte::<T>),
-        map_res(be_u8, check_num_dims::<N>),
-    ))(x)?;
+    let (x, _) = tag([0u8; 2])(x)?;
+    let (x, ()) = map_res(be_u8, check_magic_byte::<T>)(x)?;
+    let (x, num_dims) = map_res(be_u8, check_num_dims::<N>)(x)?;
     let (x, (dims, elements)) = map_res(count(be_u32, num_dims), check_dims_dimensions)(x)?;
     let (x, data) = count(T::READ_ELEMENT, elements)(x)?;
     let (x, _) = eof(x)?;
